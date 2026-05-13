@@ -41,6 +41,42 @@ def _probe(base_url: str) -> bool:
         return False
 
 
+def probe_endpoint(base_url: str) -> tuple[bool, str]:
+    """User-facing health check.
+
+    Returns (ok, message). `message` is a short human string suitable for
+    inline display next to the URL field (e.g., "3 models, 142 ms" or
+    "Connection refused").
+    """
+    import time
+    url = (base_url or "").strip().rstrip("/")
+    if not url:
+        return False, "URL is empty"
+    started = time.perf_counter()
+    try:
+        r = requests.get(f"{url}/api/tags", timeout=_TIMEOUT_PROBE)
+    except requests.ConnectionError:
+        return False, "Connection refused — is Ollama running?"
+    except requests.Timeout:
+        return False, "Timed out"
+    except requests.RequestException as exc:
+        return False, f"Error: {exc}"
+    elapsed_ms = int((time.perf_counter() - started) * 1000)
+    if r.status_code != 200:
+        return False, f"HTTP {r.status_code}"
+    try:
+        data = r.json()
+        model_count = len(data.get("models", []))
+    except Exception:
+        model_count = 0
+    if model_count == 0:
+        return True, (
+            f"Reachable in {elapsed_ms} ms, but no models installed. "
+            "Run e.g. `ollama pull llama3.2` to download one."
+        )
+    return True, f"{model_count} model(s), {elapsed_ms} ms"
+
+
 def _resolve_base(configured: str) -> str | None:
     """Return the first reachable base URL — configured, then defaults."""
     candidates: list[str] = []

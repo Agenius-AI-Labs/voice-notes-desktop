@@ -11,7 +11,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt, Slot
+import threading
+
+from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QButtonGroup,
@@ -33,6 +35,7 @@ from PySide6.QtWidgets import (
 from ..core.db import db_get_setting, db_set_setting
 from ..core.downloads import DownloadManager
 from ..core.keystore import get_secret, set_secret
+from ..core.ollama_parse import probe_endpoint
 from ..core.wakeword import HAS_OWW, get_oww_models
 
 _ASSETS = Path(__file__).resolve().parents[1] / "assets"
@@ -184,8 +187,11 @@ class WakeWordPage(QWizardPage):
 
 
 class AIBackendPage(QWizardPage):
+    probe_done = Signal(bool, str)
+
     def __init__(self):
         super().__init__()
+        self.probe_done.connect(self._on_probe_done)
         self.setTitle(" ")
         layout = QVBoxLayout(self)
         layout.setSpacing(12)
@@ -236,7 +242,7 @@ class AIBackendPage(QWizardPage):
         ank.addWidget(self._anthropic_key, 1)
         layout.addWidget(ank_row)
 
-        # Ollama URL field
+        # Ollama URL field + Test connection button
         self._ollama_url = QLineEdit()
         self._ollama_url.setPlaceholderText("http://localhost:11434")
         existing_url = db_get_setting("ollama_base_url", "http://localhost:11434") or ""
@@ -247,7 +253,26 @@ class AIBackendPage(QWizardPage):
         ur.setSpacing(10)
         ur.addWidget(QLabel("Ollama URL:"))
         ur.addWidget(self._ollama_url, 1)
+        self._ollama_test_btn = QPushButton("Test", url_row)
+        self._ollama_test_btn.setCursor(Qt.PointingHandCursor)
+        self._ollama_test_btn.clicked.connect(self._on_test_ollama)
+        ur.addWidget(self._ollama_test_btn)
         layout.addWidget(url_row)
+
+        # Ollama install / status hint, indented under the row.
+        self._ollama_status = QLabel(
+            'Don\'t have Ollama? '
+            '<a href="https://ollama.com/download" style="color: #38bdf8; text-decoration: none;">'
+            'Download for your OS</a>, then run <code>ollama pull llama3.2</code>.',
+            self,
+        )
+        self._ollama_status.setOpenExternalLinks(True)
+        self._ollama_status.setTextInteractionFlags(Qt.TextBrowserInteraction)
+        self._ollama_status.setWordWrap(True)
+        self._ollama_status.setStyleSheet(
+            "color: rgba(180, 200, 230, 0.7); font-size: 12px; padding-left: 80px;"
+        )
+        layout.addWidget(self._ollama_status)
 
         # Apply current choice
         if current == "openai":
@@ -285,6 +310,31 @@ class AIBackendPage(QWizardPage):
         else:
             db_set_setting("parser_backend", "none")
         return True
+
+    @Slot()
+    def _on_test_ollama(self) -> None:
+        url = self._ollama_url.text().strip() or "http://localhost:11434"
+        self._ollama_test_btn.setEnabled(False)
+        self._ollama_test_btn.setText("Testing…")
+
+        def worker():
+            ok, msg = probe_endpoint(url)
+            self.probe_done.emit(ok, msg)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    @Slot(bool, str)
+    def _on_probe_done(self, ok: bool, msg: str) -> None:
+        self._ollama_test_btn.setEnabled(True)
+        self._ollama_test_btn.setText("Test")
+        prefix = "✓" if ok else "✗"
+        color = "#22c55e" if ok else "#f87171"
+        self._ollama_status.setText(
+            f'<span style="color: {color}">{prefix} {msg}</span><br>'
+            f'Don\'t have Ollama? '
+            f'<a href="https://ollama.com/download" style="color: #38bdf8; text-decoration: none;">'
+            f'Download for your OS</a>, then run <code>ollama pull llama3.2</code>.'
+        )
 
 
 class DownloadsPage(QWizardPage):

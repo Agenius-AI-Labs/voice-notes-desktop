@@ -7,6 +7,8 @@ reacts immediately (theme swap, AL listener restart).
 
 from __future__ import annotations
 
+import threading
+
 from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtWidgets import (
     QButtonGroup,
@@ -27,6 +29,7 @@ from PySide6.QtWidgets import (
 
 from ..core.db import db_get_setting, db_set_setting
 from ..core.keystore import get_secret, set_secret
+from ..core.ollama_parse import probe_endpoint
 from ..core.wakeword import get_oww_models, HAS_OWW
 from .helpers import restyle
 from .signals import AppSignals
@@ -74,6 +77,7 @@ class SettingsDialog(QDialog):
     """
 
     al_settings_changed = Signal()
+    ollama_probe_done = Signal(bool, str)
 
     def __init__(self, signals: AppSignals, al_running: bool = False, parent=None):
         super().__init__(parent)
@@ -227,14 +231,36 @@ class SettingsDialog(QDialog):
             frame,
         ))
 
-        self._ollama_url = QLineEdit(frame)
+        # Ollama URL field with inline Test connection button
+        ollama_row = QWidget(frame)
+        ol = QHBoxLayout(ollama_row)
+        ol.setContentsMargins(0, 0, 0, 0)
+        ol.setSpacing(6)
+        self._ollama_url = QLineEdit(ollama_row)
         self._ollama_url.setPlaceholderText("http://localhost:11434")
+        ol.addWidget(self._ollama_url, 1)
+        self._ollama_test_btn = QPushButton("Test", ollama_row)
+        self._ollama_test_btn.setCursor(Qt.PointingHandCursor)
+        self._ollama_test_btn.clicked.connect(self._on_test_ollama)
+        ol.addWidget(self._ollama_test_btn)
         box.addWidget(_field_row(
             "Ollama base URL",
-            self._ollama_url,
-            "Local Ollama endpoint.",
+            ollama_row,
+            "Local Ollama endpoint. Click Test to verify.",
             frame,
         ))
+
+        self._ollama_status = QLabel(
+            'Need Ollama? '
+            '<a href="https://ollama.com/download" style="color: #38bdf8; text-decoration: none;">'
+            'Download here</a>, then run <code>ollama pull llama3.2</code>.',
+            frame,
+        )
+        self._ollama_status.setOpenExternalLinks(True)
+        self._ollama_status.setTextInteractionFlags(Qt.TextBrowserInteraction)
+        self._ollama_status.setWordWrap(True)
+        self._ollama_status.setProperty("class", "fieldHint")
+        box.addWidget(self._ollama_status)
 
         self._ollama_model = QLineEdit(frame)
         self._ollama_model.setPlaceholderText("qwen2.5:7b-instruct-q5_K_M")
@@ -468,6 +494,37 @@ class SettingsDialog(QDialog):
         wiz.exec()
         # Reload settings into the dialog so picks made in the wizard appear.
         self._load()
+
+    @Slot()
+    def _on_test_ollama(self) -> None:
+        url = self._ollama_url.text().strip() or "http://localhost:11434"
+        self._ollama_test_btn.setEnabled(False)
+        self._ollama_test_btn.setText("Testing…")
+        # Wire once.
+        try:
+            self.ollama_probe_done.disconnect(self._on_ollama_probe_done)
+        except (RuntimeError, TypeError):
+            pass
+        self.ollama_probe_done.connect(self._on_ollama_probe_done)
+
+        def worker():
+            ok, msg = probe_endpoint(url)
+            self.ollama_probe_done.emit(ok, msg)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    @Slot(bool, str)
+    def _on_ollama_probe_done(self, ok: bool, msg: str) -> None:
+        self._ollama_test_btn.setEnabled(True)
+        self._ollama_test_btn.setText("Test")
+        prefix = "✓" if ok else "✗"
+        color = "#22c55e" if ok else "#f87171"
+        self._ollama_status.setText(
+            f'<span style="color: {color}">{prefix} {msg}</span><br>'
+            f'Need Ollama? '
+            f'<a href="https://ollama.com/download" style="color: #38bdf8; text-decoration: none;">'
+            f'Download here</a>, then run <code>ollama pull llama3.2</code>.'
+        )
 
     @Slot()
     def _on_browse_custom_model(self) -> None:
