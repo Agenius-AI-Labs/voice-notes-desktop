@@ -194,14 +194,35 @@ class SettingsDialog(QDialog):
         frame, box = _section("Transcript parser (LLM)", self)
 
         self._parser_backend = QComboBox(frame)
-        self._parser_backend.addItem("Local (Ollama) — preferred", "local")
+        self._parser_backend.addItem("Local (Ollama), preferred", "local")
         self._parser_backend.addItem("OpenAI (gpt-4o-mini)", "openai")
-        self._parser_backend.addItem("Local first, OpenAI fallback", "auto")
-        self._parser_backend.addItem("None — keep raw transcript", "none")
+        self._parser_backend.addItem("Anthropic Claude Haiku", "anthropic")
+        self._parser_backend.addItem("Auto: local, then OpenAI, then Anthropic", "auto")
+        self._parser_backend.addItem("None, keep raw transcript", "none")
         box.addWidget(_field_row(
             "Backend",
             self._parser_backend,
             "Which LLM turns your dictation into structured note/task fields.",
+            frame,
+        ))
+
+        self._openai_api_key = QLineEdit(frame)
+        self._openai_api_key.setPlaceholderText("sk-...")
+        self._openai_api_key.setEchoMode(QLineEdit.Password)
+        box.addWidget(_field_row(
+            "OpenAI API key",
+            self._openai_api_key,
+            "Used when backend is OpenAI or auto. Read first from $OPENAI_API_KEY.",
+            frame,
+        ))
+
+        self._anthropic_api_key = QLineEdit(frame)
+        self._anthropic_api_key.setPlaceholderText("sk-ant-...")
+        self._anthropic_api_key.setEchoMode(QLineEdit.Password)
+        box.addWidget(_field_row(
+            "Anthropic API key",
+            self._anthropic_api_key,
+            "Used when backend is Anthropic or auto. Read first from $ANTHROPIC_API_KEY.",
             frame,
         ))
 
@@ -210,7 +231,7 @@ class SettingsDialog(QDialog):
         box.addWidget(_field_row(
             "Ollama base URL",
             self._ollama_url,
-            "Local Ollama endpoint. Falls through to McNasty (10.10.0.15:11434) if blank.",
+            "Local Ollama endpoint.",
             frame,
         ))
 
@@ -372,6 +393,8 @@ class SettingsDialog(QDialog):
         idx = self._parser_backend.findData(backend)
         if idx >= 0:
             self._parser_backend.setCurrentIndex(idx)
+        self._openai_api_key.setText(db_get_setting("openai_api_key", "") or "")
+        self._anthropic_api_key.setText(db_get_setting("anthropic_api_key", "") or "")
         self._ollama_url.setText(db_get_setting("ollama_base_url", "") or "")
         self._ollama_model.setText(db_get_setting("ollama_model", "") or "")
 
@@ -414,6 +437,8 @@ class SettingsDialog(QDialog):
 
         # Parser backend
         db_set_setting("parser_backend", self._parser_backend.currentData() or "auto")
+        db_set_setting("openai_api_key", self._openai_api_key.text().strip())
+        db_set_setting("anthropic_api_key", self._anthropic_api_key.text().strip())
         db_set_setting("ollama_base_url", self._ollama_url.text().strip())
         db_set_setting("ollama_model", self._ollama_model.text().strip())
 

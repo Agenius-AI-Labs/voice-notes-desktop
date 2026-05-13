@@ -171,6 +171,26 @@ class QuickTodosPanel(QFrame):
 
         outer.addWidget(add_row)
 
+        # Voice-trigger hint, persistent under the input so users discover
+        # routing prefixes without having to read the docs.
+        self._voice_hint = QLabel(
+            'Or say: "quick todo: …", "todo: …", "remind me to …"',
+            self,
+        )
+        self._voice_hint.setObjectName("qtVoiceHint")
+        self._voice_hint.setWordWrap(True)
+        self._voice_hint.setToolTip(
+            "Spoken prefixes that route a transcript here instead of saving it as a note:\n"
+            "  • quick todo: …\n"
+            "  • todo: …\n"
+            "  • to-do: …\n"
+            "  • remind me to …\n"
+            "  • add to my list …\n"
+            "  • add to the list …\n"
+            "Hyphens are normalized (so 'quick-to-do' also matches)."
+        )
+        outer.addWidget(self._voice_hint)
+
         # Scrollable list
         self._scroll = QScrollArea(self)
         self._scroll.setObjectName("qtScroll")
@@ -218,6 +238,7 @@ class QuickTodosPanel(QFrame):
             self._count.setVisible(False)
             self._clear_btn.setVisible(False)
             self._input.parentWidget().setVisible(False)
+            self._voice_hint.setVisible(False)
             self._scroll.setVisible(False)
         else:
             self.setFixedWidth(EXPANDED_WIDTH)
@@ -227,6 +248,7 @@ class QuickTodosPanel(QFrame):
             self._count.setVisible(True)
             self._clear_btn.setVisible(True)
             self._input.parentWidget().setVisible(True)
+            self._voice_hint.setVisible(True)
             self._scroll.setVisible(True)
             self._sync_empty_state()
 

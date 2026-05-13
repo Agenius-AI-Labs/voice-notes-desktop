@@ -13,7 +13,8 @@ from __future__ import annotations
 
 import threading
 
-from PySide6.QtCore import QTimer, Slot
+from PySide6.QtCore import Qt, QTimer, Slot
+from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -59,6 +60,7 @@ class MainWindow(QMainWindow):
 
         self._build()
         self._wire()
+        self._wire_shortcuts()
 
         last = db_get_setting("v3_last_nav", "capture") or "capture"
         if last not in self.NAV_TO_INDEX:
@@ -127,6 +129,49 @@ class MainWindow(QMainWindow):
 
         self._tasks.item_clicked.connect(self._on_card_clicked)
         self._notes.item_clicked.connect(self._on_card_clicked)
+
+    # ── Global hotkeys ────────────────────────────────────────
+
+    def _wire_shortcuts(self) -> None:
+        """App-focused hotkeys. (Global system-wide hotkeys would need a
+        separate library like pynput; not in scope for v0.1.)"""
+
+        # Push-to-talk: trigger the mic on whichever workspace is active
+        # (Capture or Quick Note). Ctrl on Win/Linux, Cmd on macOS via Qt
+        # auto-mapping.
+        ptt = QShortcut(QKeySequence("Ctrl+Shift+Space"), self)
+        ptt.setContext(Qt.ApplicationShortcut)
+        ptt.activated.connect(self._hotkey_dictate)
+
+        # Active Listening toggle
+        al = QShortcut(QKeySequence("Ctrl+Shift+L"), self)
+        al.setContext(Qt.ApplicationShortcut)
+        al.activated.connect(self._hotkey_toggle_al)
+
+        # Workspace switching
+        for i, key in enumerate(("capture", "quick_note", "task", "note"), start=1):
+            sc = QShortcut(QKeySequence(f"Ctrl+{i}"), self)
+            sc.setContext(Qt.ApplicationShortcut)
+            sc.activated.connect(lambda k=key: self._sidebar.nav_changed.emit(k) or self._sidebar.set_active(k))
+
+    @Slot()
+    def _hotkey_dictate(self) -> None:
+        active = getattr(self._sidebar, "_active_key", "capture")
+        if active == "quick_note":
+            self._quick_note._toggle_recording()
+        else:
+            # Default to Capture even if user is on Tasks/Notes list
+            if active not in ("capture", "quick_note"):
+                self._sidebar.nav_changed.emit("capture")
+                self._sidebar.set_active("capture")
+            self._capture._toggle_recording()
+
+    @Slot()
+    def _hotkey_toggle_al(self) -> None:
+        # Mirror the sidebar AL row click.
+        new_state = not self._al_active
+        self._sidebar.set_al_active(new_state)
+        self._sidebar.al_toggle_requested.emit(new_state)
 
     # ── Global status sync ────────────────────────────────────
 

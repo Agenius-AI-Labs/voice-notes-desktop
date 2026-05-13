@@ -1,13 +1,15 @@
-"""Transcript parser — dispatches between local Ollama and OpenAI.
+"""Transcript parser; dispatches between local Ollama, OpenAI, and Anthropic.
 
 Backend choice (setting `parser_backend`):
-    local   → Ollama only; never call OpenAI. Raises on Ollama failure.
-    openai  → OpenAI only.
-    auto    → Try Ollama first; on any error, fall through to OpenAI.
-    none    → Skip parsing, return raw transcript as body.
+    local      → Ollama only; never call cloud. Raises on Ollama failure.
+    openai     → OpenAI only (gpt-4o-mini).
+    anthropic  → Anthropic Claude Haiku only.
+    auto       → Try Ollama first; on any error, fall through to OpenAI then
+                 Anthropic (whichever has a key).
+    none       → Skip parsing, return raw transcript as body.
 
-Default is `auto` so the app prefers the homelab models but stays useful when
-the cluster is offline.
+Default is `auto` so the app prefers local models but stays useful when the
+local stack is offline.
 """
 
 from __future__ import annotations
@@ -17,6 +19,7 @@ import os
 
 from .db import db_get_setting
 from .ollama_parse import parse_transcript_locally
+from .anthropic_parse import parse_transcript_with_anthropic
 
 
 def _stub(transcript: str) -> dict:
@@ -24,7 +27,8 @@ def _stub(transcript: str) -> dict:
 
 
 def _openai_parse(transcript: str) -> dict:
-    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    api_key = (os.getenv("OPENAI_API_KEY", "").strip()
+               or (db_get_setting("openai_api_key", "") or "").strip())
     if not api_key:
         return _stub(transcript)
     from openai import OpenAI
@@ -43,7 +47,7 @@ Return a JSON object with these fields:
 - priority: "low", "normal", or "high" (default "normal")
 
 The user may explicitly say things like "title is ...", "tags are ...", "priority is high",
-"this is a task". They may also just speak naturally — in that case generate a concise title,
+"this is a task". They may also just speak naturally; in that case generate a concise title,
 put everything in the body, infer 1-3 relevant tags, and infer priority from urgency cues.
 
 Return ONLY valid JSON, no markdown fences.""",
@@ -70,14 +74,36 @@ def parse_transcript_with_ai(transcript: str) -> dict:
     if backend == "openai":
         return _openai_parse(transcript)
 
+    if backend == "anthropic":
+        try:
+            return parse_transcript_with_anthropic(transcript)
+        except Exception:
+            return _stub(transcript)
+
     if backend == "local":
         try:
             return parse_transcript_locally(transcript, model=ollama_model, base_url=ollama_url)
         except Exception:
             return _stub(transcript)
 
-    # backend == "auto" (or anything unrecognised)
+    # backend == "auto" or anything unrecognised
+    # Try local first, then OpenAI if its key is reachable, then Anthropic.
     try:
         return parse_transcript_locally(transcript, model=ollama_model, base_url=ollama_url)
     except Exception:
-        return _openai_parse(transcript)
+        pass
+    openai_key = (os.getenv("OPENAI_API_KEY", "").strip()
+                  or (db_get_setting("openai_api_key", "") or "").strip())
+    if openai_key:
+        try:
+            return _openai_parse(transcript)
+        except Exception:
+            pass
+    anthropic_key = (os.getenv("ANTHROPIC_API_KEY", "").strip()
+                     or (db_get_setting("anthropic_api_key", "") or "").strip())
+    if anthropic_key:
+        try:
+            return parse_transcript_with_anthropic(transcript)
+        except Exception:
+            pass
+    return _stub(transcript)

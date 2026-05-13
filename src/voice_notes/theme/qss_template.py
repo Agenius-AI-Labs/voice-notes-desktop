@@ -561,6 +561,13 @@ QPushButton#qtAddBtn {
 QPushButton#qtAddBtn:hover { color: $accent_hover; }
 QPushButton#qtAddBtn:pressed { color: $accent; }
 
+QLabel#qtVoiceHint {
+    color: $text_dim;
+    font-size: 11px;
+    padding: 0 12px 8px 12px;
+    background: transparent;
+}
+
 QScrollArea#qtScroll { background: transparent; border: none; }
 QWidget#qtListHost { background: transparent; }
 

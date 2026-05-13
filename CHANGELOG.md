@@ -4,6 +4,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 
 ## [Unreleased]
 
+### Added
+- Active Listening transcripts now route to the **current workspace**. If you're on Quick Note when the wake word fires, the transcript lands there (raw, no AI parse). Anywhere else, the existing Capture + AI parse path runs.
+- Persistent voice-trigger hint under the Quick Todos input listing the spoken prefixes (`quick todo:`, `todo:`, `remind me to`, etc.). Tooltip on the hint shows the full list including hyphenated variants.
+- Application hotkeys:
+  - `Ctrl+Shift+Space` toggle push-to-talk on the active workspace
+  - `Ctrl+Shift+L` toggle Active Listening
+  - `Ctrl+1` / `Ctrl+2` / `Ctrl+3` / `Ctrl+4` switch between Capture / Quick Note / Tasks / Notes
+- **Anthropic Claude Haiku** as a third LLM parser backend alongside OpenAI and Ollama. Configurable from the setup wizard and Settings. `auto` mode now tries local first, then OpenAI, then Anthropic.
+
+### Fixed
+- API keys saved in the setup wizard or Settings dialog now actually reach the LLM backends. The OpenAI and Anthropic parsers now read env first and fall back to the DB-stored key.
+
 ## [0.1.0] - 2026-05-13
 
 First public release. Extracted from the Agenius AI Labs monorepo.

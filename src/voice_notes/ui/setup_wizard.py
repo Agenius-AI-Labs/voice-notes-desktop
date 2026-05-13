@@ -197,10 +197,11 @@ class AIBackendPage(QWizardPage):
         self._group = QButtonGroup(self)
         current = (db_get_setting("parser_backend", "none") or "none").lower()
 
-        self._rb_none = QRadioButton("None — save raw transcript only")
+        self._rb_none = QRadioButton("None, save raw transcript only")
         self._rb_openai = QRadioButton("OpenAI (cloud, paid, fast)")
+        self._rb_anthropic = QRadioButton("Anthropic Claude Haiku (cloud, paid, fast)")
         self._rb_ollama = QRadioButton("Ollama (local, free, requires Ollama install)")
-        for rb in (self._rb_none, self._rb_openai, self._rb_ollama):
+        for rb in (self._rb_none, self._rb_openai, self._rb_anthropic, self._rb_ollama):
             self._group.addButton(rb)
             layout.addWidget(rb)
 
@@ -215,9 +216,24 @@ class AIBackendPage(QWizardPage):
         kr = QHBoxLayout(key_row)
         kr.setContentsMargins(20, 0, 0, 0)
         kr.setSpacing(10)
-        kr.addWidget(QLabel("API key:"))
+        kr.addWidget(QLabel("OpenAI key:"))
         kr.addWidget(self._openai_key, 1)
         layout.addWidget(key_row)
+
+        # Anthropic key field
+        self._anthropic_key = QLineEdit()
+        self._anthropic_key.setPlaceholderText("sk-ant-...")
+        self._anthropic_key.setEchoMode(QLineEdit.Password)
+        existing_a = db_get_setting("anthropic_api_key", "") or ""
+        if existing_a:
+            self._anthropic_key.setText(existing_a)
+        ank_row = QWidget(self)
+        ank = QHBoxLayout(ank_row)
+        ank.setContentsMargins(20, 0, 0, 0)
+        ank.setSpacing(10)
+        ank.addWidget(QLabel("Anthropic key:"))
+        ank.addWidget(self._anthropic_key, 1)
+        layout.addWidget(ank_row)
 
         # Ollama URL field
         self._ollama_url = QLineEdit()
@@ -228,33 +244,40 @@ class AIBackendPage(QWizardPage):
         ur = QHBoxLayout(url_row)
         ur.setContentsMargins(20, 0, 0, 0)
         ur.setSpacing(10)
-        ur.addWidget(QLabel("Base URL:"))
+        ur.addWidget(QLabel("Ollama URL:"))
         ur.addWidget(self._ollama_url, 1)
         layout.addWidget(url_row)
 
         # Apply current choice
         if current == "openai":
             self._rb_openai.setChecked(True)
+        elif current == "anthropic":
+            self._rb_anthropic.setChecked(True)
         elif current in ("local", "ollama", "auto"):
             self._rb_ollama.setChecked(True)
         else:
             self._rb_none.setChecked(True)
 
-        self._rb_none.toggled.connect(lambda on: self._sync_rows(on))
-        self._rb_openai.toggled.connect(lambda _on: self._sync_rows(self._rb_none.isChecked()))
-        self._rb_ollama.toggled.connect(lambda _on: self._sync_rows(self._rb_none.isChecked()))
-        self._sync_rows(self._rb_none.isChecked())
+        self._rb_none.toggled.connect(lambda _on: self._sync_rows())
+        self._rb_openai.toggled.connect(lambda _on: self._sync_rows())
+        self._rb_anthropic.toggled.connect(lambda _on: self._sync_rows())
+        self._rb_ollama.toggled.connect(lambda _on: self._sync_rows())
+        self._sync_rows()
 
         layout.addStretch(1)
 
-    def _sync_rows(self, none_checked: bool) -> None:
+    def _sync_rows(self) -> None:
         self._openai_key.parentWidget().setEnabled(self._rb_openai.isChecked())
+        self._anthropic_key.parentWidget().setEnabled(self._rb_anthropic.isChecked())
         self._ollama_url.parentWidget().setEnabled(self._rb_ollama.isChecked())
 
     def validatePage(self) -> bool:
         if self._rb_openai.isChecked():
             db_set_setting("parser_backend", "openai")
             db_set_setting("openai_api_key", self._openai_key.text().strip())
+        elif self._rb_anthropic.isChecked():
+            db_set_setting("parser_backend", "anthropic")
+            db_set_setting("anthropic_api_key", self._anthropic_key.text().strip())
         elif self._rb_ollama.isChecked():
             db_set_setting("parser_backend", "local")
             db_set_setting("ollama_base_url", self._ollama_url.text().strip() or "http://localhost:11434")

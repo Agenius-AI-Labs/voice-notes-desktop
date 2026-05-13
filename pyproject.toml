@@ -59,9 +59,13 @@ wakeword = [
 openai = [
     "openai>=1.30",
 ]
+anthropic = [
+    "anthropic>=0.40",
+]
 all = [
     "openwakeword>=0.6.0",
     "openai>=1.30",
+    "anthropic>=0.40",
 ]
 dev = [
     "ruff>=0.4",

@@ -104,7 +104,7 @@ class QuickNotePanel(QWidget):
         self._mic_btn = QPushButton(card)
         self._mic_btn.setObjectName("micBtn")
         self._mic_btn.setCursor(Qt.PointingHandCursor)
-        self._mic_btn.setToolTip("Push-to-talk dictation")
+        self._mic_btn.setToolTip("Push-to-talk dictation  (Ctrl+Shift+Space)")
         apply_mic_icon(self._mic_btn, recording=False)
         self._mic_btn.clicked.connect(self._toggle_recording)
         action_row.addWidget(self._mic_btn)
