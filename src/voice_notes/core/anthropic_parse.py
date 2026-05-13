@@ -11,7 +11,7 @@ import json
 import os
 import re
 
-from .db import db_get_setting
+from .keystore import get_secret
 
 _SYSTEM_PROMPT = """Parse the following voice transcript into structured note/task data.
 Return a JSON object with these fields:
@@ -55,7 +55,7 @@ def _extract_json(text: str) -> str:
 def parse_transcript_with_anthropic(transcript: str, model: str = "claude-haiku-4-5") -> dict:
     """Call Claude Haiku to parse the transcript. Falls back to stub on any error."""
     api_key = (os.getenv("ANTHROPIC_API_KEY", "").strip()
-               or (db_get_setting("anthropic_api_key", "") or "").strip())
+               or get_secret("anthropic"))
     if not api_key:
         return _stub(transcript)
 

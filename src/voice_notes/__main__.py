@@ -85,6 +85,16 @@ def main() -> int:
     except Exception:
         theme_name = "cyberpunk"
 
+    # One-shot migration: push DB-stored API keys into the OS keyring.
+    # Idempotent and silent when there's nothing to migrate.
+    try:
+        from voice_notes.core.keystore import migrate_db_to_keyring
+        migrated = migrate_db_to_keyring()
+        if migrated:
+            log.info("migrated %d secret(s) from DB to OS keyring", migrated)
+    except Exception as exc:
+        log.warning("keyring migration skipped: %s", exc)
+
     try:
         from voice_notes.theme import get_theme, render
         app.setStyleSheet(render(get_theme(theme_name)))

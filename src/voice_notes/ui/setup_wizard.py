@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
 
 from ..core.db import db_get_setting, db_set_setting
 from ..core.downloads import DownloadManager
+from ..core.keystore import get_secret, set_secret
 from ..core.wakeword import HAS_OWW, get_oww_models
 
 _ASSETS = Path(__file__).resolve().parents[1] / "assets"
@@ -209,7 +210,7 @@ class AIBackendPage(QWizardPage):
         self._openai_key = QLineEdit()
         self._openai_key.setPlaceholderText("sk-...")
         self._openai_key.setEchoMode(QLineEdit.Password)
-        existing = db_get_setting("openai_api_key", "") or ""
+        existing = get_secret("openai")
         if existing:
             self._openai_key.setText(existing)
         key_row = QWidget(self)
@@ -224,7 +225,7 @@ class AIBackendPage(QWizardPage):
         self._anthropic_key = QLineEdit()
         self._anthropic_key.setPlaceholderText("sk-ant-...")
         self._anthropic_key.setEchoMode(QLineEdit.Password)
-        existing_a = db_get_setting("anthropic_api_key", "") or ""
+        existing_a = get_secret("anthropic")
         if existing_a:
             self._anthropic_key.setText(existing_a)
         ank_row = QWidget(self)
@@ -274,10 +275,10 @@ class AIBackendPage(QWizardPage):
     def validatePage(self) -> bool:
         if self._rb_openai.isChecked():
             db_set_setting("parser_backend", "openai")
-            db_set_setting("openai_api_key", self._openai_key.text().strip())
+            set_secret("openai", self._openai_key.text().strip())
         elif self._rb_anthropic.isChecked():
             db_set_setting("parser_backend", "anthropic")
-            db_set_setting("anthropic_api_key", self._anthropic_key.text().strip())
+            set_secret("anthropic", self._anthropic_key.text().strip())
         elif self._rb_ollama.isChecked():
             db_set_setting("parser_backend", "local")
             db_set_setting("ollama_base_url", self._ollama_url.text().strip() or "http://localhost:11434")

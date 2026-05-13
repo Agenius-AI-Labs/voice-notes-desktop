@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..core.db import db_get_setting, db_set_setting
+from ..core.keystore import get_secret, set_secret
 from ..core.wakeword import get_oww_models, HAS_OWW
 from .helpers import restyle
 from .signals import AppSignals
@@ -393,8 +394,8 @@ class SettingsDialog(QDialog):
         idx = self._parser_backend.findData(backend)
         if idx >= 0:
             self._parser_backend.setCurrentIndex(idx)
-        self._openai_api_key.setText(db_get_setting("openai_api_key", "") or "")
-        self._anthropic_api_key.setText(db_get_setting("anthropic_api_key", "") or "")
+        self._openai_api_key.setText(get_secret("openai"))
+        self._anthropic_api_key.setText(get_secret("anthropic"))
         self._ollama_url.setText(db_get_setting("ollama_base_url", "") or "")
         self._ollama_model.setText(db_get_setting("ollama_model", "") or "")
 
@@ -437,8 +438,8 @@ class SettingsDialog(QDialog):
 
         # Parser backend
         db_set_setting("parser_backend", self._parser_backend.currentData() or "auto")
-        db_set_setting("openai_api_key", self._openai_api_key.text().strip())
-        db_set_setting("anthropic_api_key", self._anthropic_api_key.text().strip())
+        set_secret("openai", self._openai_api_key.text().strip())
+        set_secret("anthropic", self._anthropic_api_key.text().strip())
         db_set_setting("ollama_base_url", self._ollama_url.text().strip())
         db_set_setting("ollama_model", self._ollama_model.text().strip())
 

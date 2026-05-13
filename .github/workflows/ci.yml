@@ -54,7 +54,7 @@ jobs:
         run: pytest -v
 
   audit:
-    name: pip-audit
+    name: pip-audit (lockfile)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -63,6 +63,27 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install pip-audit
-      - name: Audit dependencies
-        run: pip-audit --strict --skip-editable --ignore-vuln GHSA-xxxx-noop || echo "audit reported issues"
-        continue-on-error: true
+      - name: Audit pinned dependencies
+        run: pip-audit --requirement requirements.lock.txt --strict --disable-pip
+
+  lock-check:
+    name: lockfile in sync with pyproject
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install pip-tools
+      - name: Regenerate lockfile and diff
+        run: |
+          cp requirements.lock.txt requirements.lock.txt.committed
+          pip-compile --extra all --output-file=requirements.lock.txt pyproject.toml --quiet
+          if ! diff -q requirements.lock.txt requirements.lock.txt.committed > /dev/null; then
+            echo "::error::requirements.lock.txt is out of sync with pyproject.toml."
+            echo "Run: pip-compile --extra all --output-file=requirements.lock.txt pyproject.toml"
+            echo "Diff:"
+            diff requirements.lock.txt.committed requirements.lock.txt || true
+            exit 1
+          fi

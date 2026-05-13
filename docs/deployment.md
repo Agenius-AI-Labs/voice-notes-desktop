@@ -86,8 +86,29 @@ Override with `VOICE_NOTES_DATA_DIR=/some/path` if you want portable installs (e
 Contents:
 - `voice_notes.db` — SQLite with all your notes, tasks, todos, and settings.
 - WAL files alongside (created during writes, removed on close).
+- `scratch/` — short-lived WAV captures, removed after each transcription.
+- `voice-notes.log` — rotating app log (1 MB × 3 backups).
 
 The Whisper model cache lives in `~/.cache/huggingface/hub/` (faster-whisper default), separate from app data. Delete it to force re-download.
+
+## API keys
+
+OpenAI / Anthropic API keys are stored in your OS keyring under the service name `voice-notes-desktop`:
+
+| OS | Backing store |
+|---|---|
+| Windows | Credential Manager |
+| macOS | Keychain |
+| Linux | Secret Service (GNOME Keyring, KWallet via D-Bus) |
+
+If no keyring backend is available (a headless Linux box, for example), the keys fall back to the SQLite `settings` table. Read precedence in the parser modules is: environment variable → keyring → DB. Setting `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` in your shell always wins.
+
+To delete a stored key:
+- macOS: open Keychain Access, find `voice-notes-desktop`, delete the entry.
+- Windows: `Credential Manager` → Web Credentials or Generic Credentials → search for `voice-notes-desktop`.
+- Linux: `seahorse` (GNOME Keyring GUI) or `secret-tool clear service voice-notes-desktop account openai`.
+
+Or use the Settings dialog in the app: clear the field and Save.
 
 ## GPU acceleration (optional)
 

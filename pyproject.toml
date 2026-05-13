@@ -50,6 +50,7 @@ dependencies = [
     "soundfile>=0.12",
     "python-dotenv>=1.0",
     "requests>=2.31",
+    "keyring>=24.0",
 ]
 
 [project.optional-dependencies]

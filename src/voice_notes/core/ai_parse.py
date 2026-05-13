@@ -18,6 +18,7 @@ import json
 import os
 
 from .db import db_get_setting
+from .keystore import get_secret
 from .ollama_parse import parse_transcript_locally
 from .anthropic_parse import parse_transcript_with_anthropic
 
@@ -28,7 +29,7 @@ def _stub(transcript: str) -> dict:
 
 def _openai_parse(transcript: str) -> dict:
     api_key = (os.getenv("OPENAI_API_KEY", "").strip()
-               or (db_get_setting("openai_api_key", "") or "").strip())
+               or get_secret("openai"))
     if not api_key:
         return _stub(transcript)
     from openai import OpenAI
@@ -93,14 +94,14 @@ def parse_transcript_with_ai(transcript: str) -> dict:
     except Exception:
         pass
     openai_key = (os.getenv("OPENAI_API_KEY", "").strip()
-                  or (db_get_setting("openai_api_key", "") or "").strip())
+                  or get_secret("openai"))
     if openai_key:
         try:
             return _openai_parse(transcript)
         except Exception:
             pass
     anthropic_key = (os.getenv("ANTHROPIC_API_KEY", "").strip()
-                     or (db_get_setting("anthropic_api_key", "") or "").strip())
+                     or get_secret("anthropic"))
     if anthropic_key:
         try:
             return parse_transcript_with_anthropic(transcript)
