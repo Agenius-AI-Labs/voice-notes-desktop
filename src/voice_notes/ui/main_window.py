@@ -351,7 +351,7 @@ class MainWindow(QMainWindow):
         Qt routes them to the GUI thread via QueuedConnection.
         """
         try:
-            text, _meta = transcribe_with_meta(wav)
+            text, meta = transcribe_with_meta(wav)
         except Exception as exc:
             self.signals.transcription_error.emit(f"Transcription error: {exc}")
             self.signals.al_cycle_complete.emit()
@@ -373,6 +373,15 @@ class MainWindow(QMainWindow):
                 self.signals.parse_done.emit({"_routed_todo": todo_text}, text)
             except Exception as exc:
                 self.signals.transcription_error.emit(f"Quick todo insert failed: {exc}")
+            self.signals.al_cycle_complete.emit()
+            return
+
+        # Workspace-aware routing: if the user is currently on the Quick Note
+        # workspace, AL transcripts go there (raw text, no AI parse). Anywhere
+        # else, fall through to the Capture path (transcription_done + parse).
+        active = getattr(self._sidebar, "_active_key", "capture")
+        if active == "quick_note":
+            self._quick_note.transcribed.emit(text, meta)
             self.signals.al_cycle_complete.emit()
             return
 
