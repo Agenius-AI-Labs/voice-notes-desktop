@@ -1,5 +1,10 @@
 # AgeniusNote
 
+[![Latest release](https://img.shields.io/github/v/release/Agenius-AI-Labs/agenius-note?sort=semver&color=38bdf8&label=download)](https://github.com/Agenius-AI-Labs/agenius-note/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-22d3ee.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![Platforms](https://img.shields.io/badge/platforms-Win%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](#install)
+
 > Talk to your computer. Get organized text. Stays on your machine.
 
 A voice-first scratchpad for Windows, macOS, and Linux. Push-to-talk dictation, always-listening wake words, local speech-to-text (Whisper), optional AI parsing (Ollama, OpenAI, or Anthropic Claude). Quick todos in a right-side pane. A scratchpad workspace for fire-and-forget transcripts you paste elsewhere.
