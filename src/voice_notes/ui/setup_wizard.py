@@ -187,7 +187,7 @@ class WakeWordPage(QWizardPage):
 
 
 class AIBackendPage(QWizardPage):
-    probe_done = Signal(bool, str)
+    probe_done = Signal(bool, str, list)
 
     def __init__(self):
         super().__init__()
@@ -274,6 +274,22 @@ class AIBackendPage(QWizardPage):
         )
         layout.addWidget(self._ollama_status)
 
+        # Ollama model picker — editable QComboBox. Populated when Test
+        # succeeds; user can also type a name (e.g., one they plan to pull).
+        self._ollama_model = QComboBox(self)
+        self._ollama_model.setEditable(True)
+        self._ollama_model.lineEdit().setPlaceholderText("qwen2.5:7b-instruct-q5_K_M")
+        existing_model = (db_get_setting("ollama_model", "") or "").strip()
+        if existing_model:
+            self._ollama_model.setCurrentText(existing_model)
+        model_row = QWidget(self)
+        mr = QHBoxLayout(model_row)
+        mr.setContentsMargins(20, 0, 0, 0)
+        mr.setSpacing(10)
+        mr.addWidget(QLabel("Ollama model:"))
+        mr.addWidget(self._ollama_model, 1)
+        layout.addWidget(model_row)
+
         # Apply current choice
         if current == "openai":
             self._rb_openai.setChecked(True)
@@ -307,6 +323,7 @@ class AIBackendPage(QWizardPage):
         elif self._rb_ollama.isChecked():
             db_set_setting("parser_backend", "local")
             db_set_setting("ollama_base_url", self._ollama_url.text().strip() or "http://localhost:11434")
+            db_set_setting("ollama_model", self._ollama_model.currentText().strip())
         else:
             db_set_setting("parser_backend", "none")
         return True
@@ -318,13 +335,13 @@ class AIBackendPage(QWizardPage):
         self._ollama_test_btn.setText("Testing…")
 
         def worker():
-            ok, msg = probe_endpoint(url)
-            self.probe_done.emit(ok, msg)
+            ok, msg, models = probe_endpoint(url)
+            self.probe_done.emit(ok, msg, models)
 
         threading.Thread(target=worker, daemon=True).start()
 
-    @Slot(bool, str)
-    def _on_probe_done(self, ok: bool, msg: str) -> None:
+    @Slot(bool, str, list)
+    def _on_probe_done(self, ok: bool, msg: str, models: list) -> None:
         self._ollama_test_btn.setEnabled(True)
         self._ollama_test_btn.setText("Test")
         prefix = "✓" if ok else "✗"
@@ -335,6 +352,16 @@ class AIBackendPage(QWizardPage):
             f'<a href="https://ollama.com/download" style="color: #38bdf8; text-decoration: none;">'
             f'Download for your OS</a>, then run <code>ollama pull llama3.2</code>.'
         )
+        if models:
+            current = self._ollama_model.currentText().strip()
+            self._ollama_model.clear()
+            self._ollama_model.addItems(models)
+            if current and current in models:
+                self._ollama_model.setCurrentText(current)
+            elif current:
+                self._ollama_model.setCurrentText(current)
+            else:
+                self._ollama_model.setCurrentIndex(0)
 
 
 class DownloadsPage(QWizardPage):

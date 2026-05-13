@@ -77,7 +77,7 @@ class SettingsDialog(QDialog):
     """
 
     al_settings_changed = Signal()
-    ollama_probe_done = Signal(bool, str)
+    ollama_probe_done = Signal(bool, str, list)
 
     def __init__(self, signals: AppSignals, al_running: bool = False, parent=None):
         super().__init__(parent)
@@ -262,12 +262,13 @@ class SettingsDialog(QDialog):
         self._ollama_status.setProperty("class", "fieldHint")
         box.addWidget(self._ollama_status)
 
-        self._ollama_model = QLineEdit(frame)
-        self._ollama_model.setPlaceholderText("qwen2.5:7b-instruct-q5_K_M")
+        self._ollama_model = QComboBox(frame)
+        self._ollama_model.setEditable(True)
+        self._ollama_model.lineEdit().setPlaceholderText("qwen2.5:7b-instruct-q5_K_M")
         box.addWidget(_field_row(
             "Ollama model",
             self._ollama_model,
-            "Any JSON-capable chat model from your local registry.",
+            "Pick from your installed models (populates after Test) or type a name. JSON-capable chat models work best.",
             frame,
         ))
 
@@ -423,7 +424,7 @@ class SettingsDialog(QDialog):
         self._openai_api_key.setText(get_secret("openai"))
         self._anthropic_api_key.setText(get_secret("anthropic"))
         self._ollama_url.setText(db_get_setting("ollama_base_url", "") or "")
-        self._ollama_model.setText(db_get_setting("ollama_model", "") or "")
+        self._ollama_model.setCurrentText(db_get_setting("ollama_model", "") or "")
 
         # AL
         al_model = db_get_setting("al_model", "hey_jarvis") or "hey_jarvis"
@@ -467,7 +468,7 @@ class SettingsDialog(QDialog):
         set_secret("openai", self._openai_api_key.text().strip())
         set_secret("anthropic", self._anthropic_api_key.text().strip())
         db_set_setting("ollama_base_url", self._ollama_url.text().strip())
-        db_set_setting("ollama_model", self._ollama_model.text().strip())
+        db_set_setting("ollama_model", self._ollama_model.currentText().strip())
 
         # AL
         new_al = {
@@ -500,7 +501,6 @@ class SettingsDialog(QDialog):
         url = self._ollama_url.text().strip() or "http://localhost:11434"
         self._ollama_test_btn.setEnabled(False)
         self._ollama_test_btn.setText("Testing…")
-        # Wire once.
         try:
             self.ollama_probe_done.disconnect(self._on_ollama_probe_done)
         except (RuntimeError, TypeError):
@@ -508,13 +508,13 @@ class SettingsDialog(QDialog):
         self.ollama_probe_done.connect(self._on_ollama_probe_done)
 
         def worker():
-            ok, msg = probe_endpoint(url)
-            self.ollama_probe_done.emit(ok, msg)
+            ok, msg, models = probe_endpoint(url)
+            self.ollama_probe_done.emit(ok, msg, models)
 
         threading.Thread(target=worker, daemon=True).start()
 
-    @Slot(bool, str)
-    def _on_ollama_probe_done(self, ok: bool, msg: str) -> None:
+    @Slot(bool, str, list)
+    def _on_ollama_probe_done(self, ok: bool, msg: str, models: list) -> None:
         self._ollama_test_btn.setEnabled(True)
         self._ollama_test_btn.setText("Test")
         prefix = "✓" if ok else "✗"
@@ -525,6 +525,21 @@ class SettingsDialog(QDialog):
             f'<a href="https://ollama.com/download" style="color: #38bdf8; text-decoration: none;">'
             f'Download here</a>, then run <code>ollama pull llama3.2</code>.'
         )
+        if models:
+            current = self._ollama_model.currentText().strip()
+            self._ollama_model.clear()
+            self._ollama_model.addItems(models)
+            # Preserve user's current choice if it matches one of the listed
+            # models, otherwise the first installed model.
+            if current and current in models:
+                self._ollama_model.setCurrentText(current)
+            elif current:
+                # User typed a model name we didn't fetch; keep their text
+                # in the editable line as a hint that they typed something
+                # custom.
+                self._ollama_model.setCurrentText(current)
+            else:
+                self._ollama_model.setCurrentIndex(0)
 
     @Slot()
     def _on_browse_custom_model(self) -> None:

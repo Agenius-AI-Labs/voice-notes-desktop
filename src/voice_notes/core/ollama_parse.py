@@ -41,40 +41,46 @@ def _probe(base_url: str) -> bool:
         return False
 
 
-def probe_endpoint(base_url: str) -> tuple[bool, str]:
+def probe_endpoint(base_url: str) -> tuple[bool, str, list[str]]:
     """User-facing health check.
 
-    Returns (ok, message). `message` is a short human string suitable for
-    inline display next to the URL field (e.g., "3 models, 142 ms" or
-    "Connection refused").
+    Returns (ok, message, models). `message` is suitable for inline display
+    next to the URL field (e.g., "3 models, 142 ms"). `models` is a sorted
+    list of installed model names (empty on failure).
     """
     import time
     url = (base_url or "").strip().rstrip("/")
     if not url:
-        return False, "URL is empty"
+        return False, "URL is empty", []
     started = time.perf_counter()
     try:
         r = requests.get(f"{url}/api/tags", timeout=_TIMEOUT_PROBE)
     except requests.ConnectionError:
-        return False, "Connection refused — is Ollama running?"
+        return False, "Connection refused, is Ollama running?", []
     except requests.Timeout:
-        return False, "Timed out"
+        return False, "Timed out", []
     except requests.RequestException as exc:
-        return False, f"Error: {exc}"
+        return False, f"Error: {exc}", []
     elapsed_ms = int((time.perf_counter() - started) * 1000)
     if r.status_code != 200:
-        return False, f"HTTP {r.status_code}"
+        return False, f"HTTP {r.status_code}", []
     try:
         data = r.json()
-        model_count = len(data.get("models", []))
+        raw_models = data.get("models", [])
+        names = sorted({
+            (m.get("name") or m.get("model") or "").strip()
+            for m in raw_models
+            if (m.get("name") or m.get("model"))
+        })
+        names = [n for n in names if n]
     except Exception:
-        model_count = 0
-    if model_count == 0:
+        names = []
+    if not names:
         return True, (
             f"Reachable in {elapsed_ms} ms, but no models installed. "
             "Run e.g. `ollama pull llama3.2` to download one."
-        )
-    return True, f"{model_count} model(s), {elapsed_ms} ms"
+        ), []
+    return True, f"{len(names)} model(s), {elapsed_ms} ms", names
 
 
 def _resolve_base(configured: str) -> str | None:
