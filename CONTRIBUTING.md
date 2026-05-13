@@ -117,8 +117,24 @@ To do a manual build (e.g. testing a release branch before tagging), go to **Act
 - `VoiceNotesDesktop-x.y.z-windows.zip` — PyInstaller onedir bundle, `voice-notes.exe` plus shared libs.
 - `VoiceNotesDesktop-x.y.z-macos.zip` — `voice-notes.app` bundle.
 - `VoiceNotesDesktop-x.y.z-linux.tar.gz` — PyInstaller onedir bundle.
+- A wheel + sdist published to [PyPI](https://pypi.org/project/voice-notes-desktop/) so `pip install voice-notes-desktop` works.
 
-None of these are code-signed or notarized yet. SmartScreen on Windows and Gatekeeper on macOS will warn. Documented in [docs/security-audit-v1.md](docs/security-audit-v1.md) under H1 follow-ups.
+None of the binaries are code-signed or notarized yet. SmartScreen on Windows and Gatekeeper on macOS will warn. Documented in [docs/security-audit-v1.md](docs/security-audit-v1.md) under H1 follow-ups.
+
+### One-time PyPI setup (maintainers)
+
+Trusted publishing (OIDC) replaces the old API-token model. To enable PyPI publishing for this repo, do this **once** before the first tag:
+
+1. Reserve the project name on PyPI by uploading an initial sdist manually:
+   `python -m build && twine upload dist/*` (needs a one-off API token; revoke after).
+2. On PyPI → your project → **Manage** → **Publishing** → **Add a new publisher** → **GitHub**:
+   - Owner: `Agenius-AI-Labs`
+   - Repository: `voice-notes-desktop`
+   - Workflow name: `release.yml`
+   - Environment: `pypi`
+3. On GitHub → repo Settings → **Environments** → **New environment** → name it `pypi`. Optionally add protection rules (required reviewers, branch restrictions).
+
+After that the `publish-pypi` job in `release.yml` works automatically on every `v*` tag with no secrets.
 
 ## Code of Conduct
 

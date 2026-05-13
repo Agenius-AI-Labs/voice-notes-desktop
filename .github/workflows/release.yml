@@ -149,6 +149,31 @@ jobs:
           path: ${{ env.ASSET_PATH }}
           if-no-files-found: error
 
+  publish-pypi:
+    name: Publish wheel + sdist to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    # Only on real tag pushes, not manual dispatch.
+    if: startsWith(github.ref, 'refs/tags/v')
+    environment:
+      name: pypi
+      url: https://pypi.org/project/voice-notes-desktop/
+    permissions:
+      id-token: write   # trusted publishing via OIDC
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build distributions
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build --sdist --wheel
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+
   publish:
     name: Attach to GitHub Release
     needs: build
