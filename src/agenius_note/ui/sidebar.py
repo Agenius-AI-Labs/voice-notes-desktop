@@ -78,7 +78,7 @@ class Sidebar(QFrame):
         logo_row = QWidget(self)
         logo_layout = QHBoxLayout(logo_row)
         logo_layout.setContentsMargins(16, 18, 16, 4)
-        logo_layout.setSpacing(2)  # tight kerning between "Agenius" and "Note"
+        logo_layout.setSpacing(0)  # butt "Agenius" and "Note" together to match AgeniusDesk
 
         logo_a = QLabel("Agenius", logo_row)
         logo_a.setObjectName("sidebarLogo")
