@@ -16,6 +16,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version
 ### Fixed
 - API keys saved in the setup wizard or Settings dialog now actually reach the LLM backends. The OpenAI and Anthropic parsers now read env first and fall back to the DB-stored key.
 
+### Security
+- Removed hardcoded internal LAN IP (`10.10.0.15:11434`) from `core/ollama_parse.py`. Defaults now contain only `http://localhost:11434`; configure remote Ollama endpoints via Settings.
+- `db_update` now validates column names against an allowlist. Unknown columns raise `ValueError`. Prevents SQL-injection-via-dict-key footgun.
+- ElevenLabs `voice_id` is now URL-encoded before being interpolated into the TTS endpoint.
+- README warns users to only load custom wake-word `.onnx` files they trained themselves or downloaded from the openWakeWord model zoo (onnxruntime has had CVEs in the past).
+- Initial security audit at `docs/security-audit-v1.md`: 0 critical, 2 high (1 patched, 1 documented for Phase 2 keyring migration), 3 medium (2 patched), 3 low (1 patched).
+
 ## [0.1.0] - 2026-05-13
 
 First public release. Extracted from the Agenius AI Labs monorepo.

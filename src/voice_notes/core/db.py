@@ -152,12 +152,22 @@ def db_list(item_type=None, status="all", q="", limit=200) -> list[dict]:
         c.close()
 
 
+_ALLOWED_UPDATE_COLS = frozenset({
+    "item_type", "title", "body", "status", "priority", "due_at", "tags", "source",
+})
+
+
 def db_update(item_id: int, fields: dict) -> dict | None:
     if not fields:
         return None
     sets = []
     args: list = []
     for col, val in fields.items():
+        # Defense in depth: column names are not parameterizable via ?, so
+        # we whitelist them. SQLi-via-key would require a buggy caller, but
+        # this makes the function itself safe even when misused.
+        if col not in _ALLOWED_UPDATE_COLS:
+            raise ValueError(f"db_update: refusing to update unknown column {col!r}")
         if col == "tags":
             val = json.dumps(val)
         sets.append(f"{col} = ?")

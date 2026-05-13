@@ -6,6 +6,7 @@ Lifted verbatim from voice_notes_desktop_v2.py lines 468–505.
 from __future__ import annotations
 
 import os
+from urllib.parse import quote
 
 import numpy as np
 
@@ -41,8 +42,9 @@ def el_generate_audio(text: str, voice_id: str) -> np.ndarray:
     if not api_key:
         raise RuntimeError("ELEVENLABS_API_KEY not set")
     import requests
+    safe_voice = quote(voice_id, safe="")
     resp = requests.post(
-        f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}?output_format=pcm_16000",
+        f"https://api.elevenlabs.io/v1/text-to-speech/{safe_voice}?output_format=pcm_16000",
         headers={"xi-api-key": api_key, "Content-Type": "application/json"},
         json={"text": text, "model_id": "eleven_multilingual_v2"},
         timeout=30,

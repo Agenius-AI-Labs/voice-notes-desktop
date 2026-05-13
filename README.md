@@ -65,6 +65,15 @@ Three workspaces plus a persistent right-side pane:
 | Notes | List of saved notes. Click to edit. |
 | Quick Todos pane | Right-side. Add via text or voice ("quick todo: ..."). Check off when done. |
 
+## Custom wake words: safety note
+
+The "Custom model file" setting in Settings → Active Listening loads a `.onnx`
+or `.tflite` file through onnxruntime. Only load files you trained yourself
+(via the [openWakeWord Colab notebook](https://github.com/dscripka/openWakeWord/blob/main/notebooks/automatic_model_training.ipynb))
+or downloaded from [openWakeWord's official model zoo](https://github.com/dscripka/openWakeWord).
+A malicious `.onnx` file from an untrusted source could exploit a future
+onnxruntime vulnerability.
+
 ## Privacy
 
 - Speech-to-text runs locally. No audio leaves your machine.

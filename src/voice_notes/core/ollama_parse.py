@@ -1,11 +1,10 @@
 """Local Ollama JSON parser for dictation transcripts.
 
-Calls `<base_url>/api/chat` with `format: "json"` so the model is forced to emit
-strict JSON. Default model is qwen2.5:7b-instruct-q5_K_M (good JSON discipline).
+Calls `<base_url>/api/chat` with `format: "json"` so the model is forced to
+emit strict JSON. Default model is qwen2.5:7b-instruct-q5_K_M.
 
-Endpoint search order when `base_url` is empty (set via `db_set_setting`):
-    1. http://localhost:11434
-    2. http://10.10.0.15:11434  (McNasty Docker — same machine via LAN IP)
+When `base_url` is empty, the parser probes `http://localhost:11434` only.
+Configure a non-local Ollama endpoint via Settings if you run it elsewhere.
 """
 
 from __future__ import annotations
@@ -15,7 +14,7 @@ import json
 import requests
 
 DEFAULT_MODEL = "qwen2.5:7b-instruct-q5_K_M"
-DEFAULT_BASE_URLS = ("http://localhost:11434", "http://10.10.0.15:11434")
+DEFAULT_BASE_URLS = ("http://localhost:11434",)
 _TIMEOUT_PROBE = 1.5
 _TIMEOUT_CHAT = 30.0
 
