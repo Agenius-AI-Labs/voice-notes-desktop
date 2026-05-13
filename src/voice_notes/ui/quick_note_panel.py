@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import threading
 
-from PySide6.QtCore import QTimer, Qt, Signal, Slot
+from PySide6.QtCore import QSize, QTimer, Qt, Signal, Slot
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import (
     QFrame,
@@ -60,11 +60,11 @@ class QuickNotePanel(QFrame):
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)
 
-        # Header row (matches the qtHeader pattern visually).
+        # Header: title  |  status  |  mic  Copy  Clear
         header = QFrame(self)
         header.setObjectName("qnHeader")
         h = QHBoxLayout(header)
-        h.setContentsMargins(8, 10, 10, 6)
+        h.setContentsMargins(10, 10, 8, 6)
         h.setSpacing(8)
 
         title = QLabel("Quick Note", header)
@@ -74,6 +74,18 @@ class QuickNotePanel(QFrame):
         self._status = QLabel("", header)
         self._status.setObjectName("qnStatus")
         h.addWidget(self._status, 1)
+
+        # Compact mic icon-button (same styled glyph as Capture, header-sized).
+        self._mic_btn = QPushButton(header)
+        self._mic_btn.setObjectName("qnMicBtn")
+        self._mic_btn.setCursor(Qt.PointingHandCursor)
+        self._mic_btn.setToolTip("Push-to-talk dictation  (Ctrl+Shift+Space)")
+        apply_mic_icon(self._mic_btn, recording=False)
+        # Override the 48x48 default from apply_mic_icon with compact sizing.
+        self._mic_btn.setIconSize(QSize(20, 20))
+        self._mic_btn.setFixedSize(28, 28)
+        self._mic_btn.clicked.connect(self._toggle_recording)
+        h.addWidget(self._mic_btn)
 
         self._copy_btn = QPushButton("Copy", header)
         self._copy_btn.setObjectName("qnCopyBtn")
@@ -94,7 +106,7 @@ class QuickNotePanel(QFrame):
         body_host = QFrame(self)
         body_host.setObjectName("qnBodyHost")
         bl = QVBoxLayout(body_host)
-        bl.setContentsMargins(8, 0, 8, 6)
+        bl.setContentsMargins(10, 0, 10, 10)
         bl.setSpacing(0)
         self._body = QTextEdit(body_host)
         self._body.setObjectName("qnBody")
@@ -104,28 +116,6 @@ class QuickNotePanel(QFrame):
         )
         bl.addWidget(self._body, 1)
         outer.addWidget(body_host, 1)
-
-        # Mic action row at the bottom.
-        action_row = QFrame(self)
-        action_row.setObjectName("qnActionRow")
-        ar = QHBoxLayout(action_row)
-        ar.setContentsMargins(10, 4, 10, 8)
-        ar.setSpacing(8)
-
-        self._mic_btn = QPushButton(action_row)
-        self._mic_btn.setObjectName("micBtn")
-        self._mic_btn.setCursor(Qt.PointingHandCursor)
-        self._mic_btn.setToolTip("Push-to-talk dictation  (Ctrl+Shift+Space)")
-        apply_mic_icon(self._mic_btn, recording=False)
-        self._mic_btn.clicked.connect(self._toggle_recording)
-        ar.addWidget(self._mic_btn)
-
-        self._mic_label = QLabel("Click to dictate", action_row)
-        self._mic_label.setObjectName("qnMicLabel")
-        ar.addWidget(self._mic_label)
-        ar.addStretch(1)
-
-        outer.addWidget(action_row)
 
     def _wire(self) -> None:
         self.transcribed.connect(self._on_transcribed)
@@ -159,8 +149,8 @@ class QuickNotePanel(QFrame):
         self._tick_secs = 0
         self._mic_btn.setProperty("recording", True)
         apply_mic_icon(self._mic_btn, recording=True)
+        self._mic_btn.setIconSize(QSize(20, 20))  # apply_mic_icon resets to 48
         restyle(self._mic_btn)
-        self._mic_label.setText("Recording…  (click to stop)")
         self._set_status("Recording 0s")
         self._tick_timer.start()
 
@@ -169,8 +159,8 @@ class QuickNotePanel(QFrame):
         self._tick_timer.stop()
         self._mic_btn.setProperty("recording", False)
         apply_mic_icon(self._mic_btn, recording=False)
+        self._mic_btn.setIconSize(QSize(20, 20))
         restyle(self._mic_btn)
-        self._mic_label.setText("Transcribing…")
         self._set_status("Transcribing…")
         threading.Thread(target=self._transcribe_worker, daemon=True).start()
 
@@ -203,7 +193,6 @@ class QuickNotePanel(QFrame):
 
     @Slot(str, dict)
     def _on_transcribed(self, text: str, meta: dict) -> None:
-        self._mic_label.setText("Click to dictate")
         existing = self._body.toPlainText().rstrip()
         if existing:
             self._body.setPlainText(existing + "\n" + text)
@@ -223,7 +212,6 @@ class QuickNotePanel(QFrame):
 
     @Slot(str)
     def _on_transcribe_failed(self, msg: str) -> None:
-        self._mic_label.setText("Click to dictate")
         self._set_status(msg)
 
     @Slot()

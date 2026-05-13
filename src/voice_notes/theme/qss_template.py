@@ -663,11 +663,14 @@ QTextEdit#qnBody {
 }
 QTextEdit#qnBody:focus { border: 1px solid $accent; }
 
-QFrame#qnActionRow { background: transparent; }
-QLabel#qnMicLabel {
-    color: $text_dim;
-    font-size: 11px;
+QPushButton#qnMicBtn {
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    padding: 0;
 }
+QPushButton#qnMicBtn:hover { background: $bg_hover_solid; }
+QPushButton#qnMicBtn[recording="true"] { background: $error_glow; }
 
 /* ───────── Misc ────────────────────────────────────────────── */
 
